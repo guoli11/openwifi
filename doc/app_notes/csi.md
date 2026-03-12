@@ -7,6 +7,8 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 We extend the **CSI** (Channel State Information) to **CSI** (Chip State Information)!
 
+(This app note shows general CSI collection. To use self-Tx CSI in full duplex mode as **RADAR**, please refer to [WiFi CSI radar via self CSI capturing](radar-self-csi.md))
+
 ## Quick start
 - Power on the SDR board.
 - Connect a computer to the SDR board via Ethernet cable. The computer should have static IP 192.168.10.1. Open a terminal on the computer, and then in the terminal:
@@ -34,7 +36,7 @@ We extend the **CSI** (Channel State Information) to **CSI** (Chip State Informa
   cd openwifi/user_space/side_ch_ctl_src
   python3 side_info_display.py
   ```
-  The python script needs "matplotlib.pyplot" and "numpy" packages installed. Now you should see 3 figures showing run-time **frequency offset**, **channel state/response** and **constellation form equalizer**. Meanwhile the python script prints the **timestamp**.
+  You might need to install beforehand: "sudo apt install python3-numpy python3-matplotlib python3-tk". Now you should see 3 figures showing run-time **frequency offset**, **channel state/response** and **constellation form equalizer**. Meanwhile the python script prints the **timestamp**.
   ![](./csi-screen-shot.jpg)
   
   While running, all information is also stored into a file **side_info.txt**. A matlab script **test_side_info_file_display.m** is offered to help you do analysis on the Chip State Information offline.
@@ -128,6 +130,8 @@ We extend the **CSI** (Channel State Information) to **CSI** (Chip State Informa
   The openwifi CSI feature could run with not only monitor mode but also other modes, such as AP-Client or ad-hoc mode. After the communication functionality is fully up in those modes, you can start CSI feature from "**insmod side_ch.ko**" and "**./side_ch_ctl g**" on board as described in the previous sections to extract CSI to your computer.
 
 ## Map the CSI information to the WiFi packet
+  Please check this discussion: https://github.com/open-sdr/openwifi/discussions/344
+  
   If you want to relate the CSI information to the WiFi packet, you need to capture WiFi packets (tcpdump/wireshark/etc) while capturing CSI. Then you can match the timestamp (TSF timer value) between WiFi packet and CSI information, because this is the unique same identity of a Wifi packet and related CSI information.
   
   Please learn the python and Matlab script to extract CSI information per packet according to your requirement.

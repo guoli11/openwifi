@@ -971,10 +971,18 @@ static ssize_t restrict_freq_mhz_store(struct device *input_dev, struct device_a
 	struct ieee80211_hw *dev = platform_get_drvdata(pdev);
 	struct openwifi_priv *priv = dev->priv;
 
-	long readin;
+  static struct ieee80211_conf channel_conf_tmp;
+  static struct ieee80211_channel channel_tmp;
+
+  long readin;
 	u32 ret = kstrtol(buf, 10, &readin);
 
+  channel_conf_tmp.chandef.chan = (&channel_tmp);
+
 	priv->stat.restrict_freq_mhz = readin;
+
+  channel_conf_tmp.chandef.chan->center_freq = priv->stat.restrict_freq_mhz;
+  ad9361_rf_set_channel(dev, &channel_conf_tmp);
 
 	return ret ? ret : len;
 }
@@ -990,10 +998,12 @@ static ssize_t csma_cfg0_show(struct device *input_dev, struct device_attribute 
 	reg_val = xpu_api->XPU_REG_FORCE_IDLE_MISC_read();
 	priv->stat.csma_cfg0 = reg_val;
 	
-	return sprintf(buf, "nav_disable %d difs_disable %d eifs_disable %d cw_override %d cw override val %d wait_after_decode_top %d\n", 
+	return sprintf(buf, "nav_disable %d difs_disable %d eifs_disable %d eifs_by_rx_fail_disable %d eifs_by_tx_fail_disable %d cw_override %d cw override val %d wait_after_decode_top %d\n", 
 					(reg_val>>31)&1, 
 					(reg_val>>30)&1, 
 					(reg_val>>29)&1, 
+          (reg_val>>27)&1, 
+          (reg_val>>26)&1, 
 					(reg_val>>28)&1, 
 					(reg_val>>16)&0xf, 
 					(reg_val>>0)&0xff);

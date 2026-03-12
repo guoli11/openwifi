@@ -5,8 +5,18 @@
 # SPDX-FileCopyrightText: 2019 UGent
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
-if [ "$#" -lt 2 ]; then
-    echo "You must enter at least 2 arguments: \$XILINX_DIR ARCH_BIT(32 or 64)"
+# ATTENTION! You need Vitis, NOT Vitis_HLS, installed
+
+# if [ "$#" -ne 1 ]; then
+#     echo "You must enter 1 arguments: ARCH_BIT(32 or 64)"
+#     exit 1
+# fi
+
+# OPENWIFI_DIR=$(pwd)/../
+# ARCH_OPTION=$1
+
+if [ "$#" -ne 2 ]; then
+    echo "You must enter 2 arguments: \$XILINX_DIR ARCH_BIT(32 or 64)"
     exit 1
 fi
 
@@ -21,7 +31,7 @@ else
     exit 1
 fi
 
-if [ -d "$XILINX_DIR/SDK" ]; then
+if [ -d "$XILINX_DIR/Vitis" ]; then
     echo "\$XILINX_DIR is found!"
 else
     echo "\$XILINX_DIR is not correct. Please check!"
@@ -35,18 +45,28 @@ else
     echo "\$ARCH_OPTION is valid!"
 fi
 
-if [ "$ARCH_OPTION" == "64" ]; then
-    LINUX_KERNEL_SRC_DIR_NAME=adi-linux-64
-    LINUX_KERNEL_CONFIG_FILE=$OPENWIFI_DIR/kernel_boot/kernel_config_zynqmp
-    ARCH_NAME="arm64"
-    CROSS_COMPILE_NAME="aarch64-linux-gnu-"
-    IMAGE_TYPE=Image
+XILINX_ENV_FILE=$XILINX_DIR/Vitis/2022.2/settings64.sh
+echo "Expect env file $XILINX_ENV_FILE"
+
+if [ -f "$XILINX_ENV_FILE" ]; then
+    echo "$XILINX_ENV_FILE is found!"
 else
-    LINUX_KERNEL_SRC_DIR_NAME=adi-linux
-    LINUX_KERNEL_CONFIG_FILE=$OPENWIFI_DIR/kernel_boot/kernel_config
-    ARCH_NAME="arm"
-    CROSS_COMPILE_NAME="arm-linux-gnueabihf-"
-    IMAGE_TYPE=uImage
+    echo "$XILINX_ENV_FILE is not correct. Please check!"
+    exit 1
+fi
+
+if [ "$ARCH_OPTION" == "64" ]; then
+  LINUX_KERNEL_SRC_DIR_NAME=adi-linux-64
+  LINUX_KERNEL_CONFIG_FILE=$OPENWIFI_DIR/kernel_boot/kernel_config_zynqmp
+  ARCH_NAME="arm64"
+  CROSS_COMPILE_NAME="aarch64-linux-gnu-"
+  IMAGE_TYPE=Image
+else
+  LINUX_KERNEL_SRC_DIR_NAME=adi-linux
+  LINUX_KERNEL_CONFIG_FILE=$OPENWIFI_DIR/kernel_boot/kernel_config
+  ARCH_NAME="arm"
+  CROSS_COMPILE_NAME="arm-linux-gnueabihf-"
+  IMAGE_TYPE=uImage
 fi
 
 home_dir=$(pwd)
@@ -55,29 +75,50 @@ set -x
 
 cd $OPENWIFI_DIR/
 git submodule init $LINUX_KERNEL_SRC_DIR_NAME
+cd $OPENWIFI_DIR/$LINUX_KERNEL_SRC_DIR_NAME
+git reset --hard
+cd $OPENWIFI_DIR/
 git submodule update $LINUX_KERNEL_SRC_DIR_NAME
 cd $OPENWIFI_DIR/$LINUX_KERNEL_SRC_DIR_NAME
-git checkout 2019_R1
-git pull origin 2019_R1
-git reset --hard
-# git reset --hard 4e81f0927cfb2fada92fc762dbd65d002848405a
-cp $LINUX_KERNEL_CONFIG_FILE ./.config
-cp $OPENWIFI_DIR/driver/ad9361/ad9361.c $OPENWIFI_DIR/$LINUX_KERNEL_SRC_DIR_NAME/drivers/iio/adc/ad9361.c -rf
-cp $OPENWIFI_DIR/driver/ad9361/ad9361_conv.c $OPENWIFI_DIR/$LINUX_KERNEL_SRC_DIR_NAME/drivers/iio/adc/ad9361_conv.c -rf
+if false; then
+  echo "Reserve for future"
+else
+  git fetch
+  git checkout 2022_R2
+  git pull origin 2022_R2
+  # git reset --hard 2022_R2
+  git reset --hard c2f371e014f0704be4db02e5014c51ae99477c13 # save this commit for tsn
+fi
 
-source $XILINX_DIR/SDK/2018.3/settings64.sh
+source $XILINX_ENV_FILE
 export ARCH=$ARCH_NAME
 export CROSS_COMPILE=$CROSS_COMPILE_NAME
 
-make oldconfig && make prepare && make modules_prepare
+if false; then
+  echo "Reserve for future"
+else
+  # if [ "$ARCH_OPTION" == "64" ]; then
+    cp $LINUX_KERNEL_CONFIG_FILE ./.config
+    # cp $OPENWIFI_DIR/driver/ad9361/ad9361.c $OPENWIFI_DIR/$LINUX_KERNEL_SRC_DIR_NAME/drivers/iio/adc/ad9361.c -rf
+    # cp $OPENWIFI_DIR/driver/ad9361/ad9361_conv.c $OPENWIFI_DIR/$LINUX_KERNEL_SRC_DIR_NAME/drivers/iio/adc/ad9361_conv.c -rf
+    git apply ../kernel_boot/axi_hdmi_crtc.patch
+    git apply ../kernel_boot/ad9361.patch
+    git apply ../kernel_boot/ad9361_private.patch
+    git apply ../kernel_boot/ad9361_conv.patch
+    # #Ignore warning in mac80211 -- NOT necessary for 2022_R2 kernel!
+    # sed -i '3692 s/^/\/\//' ../$LINUX_KERNEL_SRC_DIR_NAME/net/mac80211/util.c
+  # else
+    # make zynq_xcomm_adv7511_defconfig
+  # fi
 
-if [ "$#" -gt 2 ]; then
-    # if [ -f "$OPENWIFI_DIR/$LINUX_KERNEL_SRC_DIR_NAME/arch/$ARCH_NAME/boot/$IMAGE_TYPE" ]; then
-    #     echo "Kernel found! Skip the time costly Linux kernel compiling."
-    # else
-        make -j12 $IMAGE_TYPE UIMAGE_LOADADDR=0x8000
-        make modules
-    # fi
+  make oldconfig
+  # make adi_zynqmp_defconfig
+  make prepare && make modules_prepare
+
+  # if [ "$#" -gt 2 ]; then
+  make -j12 $IMAGE_TYPE UIMAGE_LOADADDR=0x8000
+  make modules
+  # fi
 fi
 
 cd $home_dir

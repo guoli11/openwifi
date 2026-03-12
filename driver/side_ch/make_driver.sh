@@ -20,7 +20,7 @@ else
     exit 1
 fi
 
-if [ -d "$XILINX_DIR/SDK" ]; then
+if [ -d "$XILINX_DIR/Vitis" ]; then
     echo "\$XILINX_DIR is found!"
 else
     echo "\$XILINX_DIR is not correct. Please check!"
@@ -34,7 +34,10 @@ else
     echo "\$ARCH_OPTION is valid!"
 fi
 
-source $XILINX_DIR/SDK/2018.3/settings64.sh
+XILINX_ENV_FILE=$XILINX_DIR/Vitis/2022.2/settings64.sh
+echo "Expect env file $XILINX_ENV_FILE"
+
+source $XILINX_ENV_FILE
 if [ "$ARCH_OPTION" == "64" ]; then
     LINUX_KERNEL_SRC_DIR=$OPENWIFI_DIR/adi-linux-64/
     ARCH="arm64"

@@ -31,7 +31,7 @@ else
     exit 1
 fi
 
-if [ -d "$XILINX_DIR/SDK" ]; then
+if [ -d "$XILINX_DIR/Vitis" ]; then
     echo "\$XILINX_DIR is found!"
 else
     echo "\$XILINX_DIR is not correct. Please check!"
@@ -43,6 +43,16 @@ if [ "$ARCH_OPTION" != "32" ] && [ "$ARCH_OPTION" != "64" ]; then
     exit 1
 else
     echo "\$ARCH_OPTION is valid!"
+fi
+
+XILINX_ENV_FILE=$XILINX_DIR/Vitis/2022.2/settings64.sh
+echo "Expect env file $XILINX_ENV_FILE"
+
+if [ -f "$XILINX_ENV_FILE" ]; then
+    echo "$XILINX_ENV_FILE is found!"
+else
+    echo "$XILINX_ENV_FILE is not correct. Please check!"
+    exit 1
 fi
 
 echo "#define USE_NEW_RX_INTERRUPT 1" > pre_def.h
@@ -72,7 +82,8 @@ if [[ -n $7 ]]; then
     echo "#define $DEFINE5" >> pre_def.h
 fi
 
-source $XILINX_DIR/SDK/2018.3/settings64.sh
+source $XILINX_ENV_FILE
+
 if [ "$ARCH_OPTION" == "64" ]; then
     LINUX_KERNEL_SRC_DIR=$OPENWIFI_DIR/adi-linux-64/
     ARCH="arm64"
@@ -85,7 +96,7 @@ fi
 
 # check if user entered the right path to analog device linux
 if [ -d "$LINUX_KERNEL_SRC_DIR" ]; then
-    echo " setup linux kernel path ${LINUX_KERNEL_SRC_DIR}"
+    echo "setup linux kernel path ${LINUX_KERNEL_SRC_DIR}"
 else
     echo "Error: path to adi linux: ${LINUX_KERNEL_SRC_DIR} not found. Can not continue."
     exit 1
@@ -101,7 +112,6 @@ if git log -1; then
 else
     echo "#define GIT_REV 0xFFFFFFFF" > git_rev.h
 fi
-make KDIR=$LINUX_KERNEL_SRC_DIR ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE
 cd $OPENWIFI_DIR/driver/openofdm_tx
 make KDIR=$LINUX_KERNEL_SRC_DIR ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE
 cd $OPENWIFI_DIR/driver/openofdm_rx
@@ -114,5 +124,11 @@ cd $OPENWIFI_DIR/driver/xpu
 make KDIR=$LINUX_KERNEL_SRC_DIR ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE
 # cd $OPENWIFI_DIR/driver/ad9361
 # make KDIR=$LINUX_KERNEL_SRC_DIR ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE
+
+cd $OPENWIFI_DIR/driver/side_ch
+./make_driver.sh $XILINX_DIR $ARCH_OPTION
+
+cd $OPENWIFI_DIR/driver/
+make KDIR=$LINUX_KERNEL_SRC_DIR ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE
 
 cd $home_dir
